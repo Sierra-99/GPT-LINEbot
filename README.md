@@ -3,7 +3,7 @@
 - ChatGPT APIを利用したLINE botを、Flaskで開発
 - 実行環境は、Ubuntu 22.04 VPS
 
-
+<br>
 
 # Requirements
 ---
@@ -15,7 +15,7 @@ $ sudo apt install python3 python3-pip
 - ディレクトリ
 ```zsh
 $ pwd
-~/LINE
+~/LINEbot
 
 $ ls -a
 .env  app.py  requirements.txt
@@ -35,9 +35,9 @@ $ sudo iptables -A OUTPUT -p tcp --sport 5000 -m conntrack --ctstate ESTABLISHED
 ```
 
 - LINE Developersページにて、Webhook URLを設定。
-	- ドメイン名が example.com で、サーバー上のポート番号が 5000 の場合、Webhook URLは https://example.com:5000/callback となります。
+	- ドメイン名が example.com で、サーバー上のポート番号が 5000 の場合、Webhook URLは https://example.com:5000/callback
 
-
+<br>
 
 # Usage
 ---
@@ -59,8 +59,8 @@ After=network.target
 
 [Service]
 User=root
-WorkingDirectory=/home/sierra/LINE
-ExecStart=/usr/bin/python3 /home/sierra/LINE/app.py
+WorkingDirectory=/<path>/<to>/LINEbot
+ExecStart=/usr/bin/python3 /<path>/<to>/LINEbot/app.py
 Restart=always
 
 [Install]
