@@ -81,7 +81,7 @@ $ sudo systemctl start myflaskapp
 
 - Check service status.
 ```zsh
-sudo systemctl status myflaskapp
+$ sudo systemctl status myflaskapp
 ```
 
 - Set to start automatically when the system is rebooted.
