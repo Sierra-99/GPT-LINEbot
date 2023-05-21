@@ -7,6 +7,7 @@ import os
 from dotenv import load_dotenv
 from collections import deque
 import logging
+import sqlite3
 
 # .envファイルを読み込む
 if os.path.exists('.env'):
@@ -38,6 +39,15 @@ file_handler.setFormatter(formatter)
 
 logger.addHandler(file_handler)
 
+# データベース接続の設定
+conn = sqlite3.connect("chat_history.db")
+c = conn.cursor()
+
+# テーブル作成
+c.execute('''CREATE TABLE IF NOT EXISTS chat_history
+    (user_id text, message text, timestamp text)''')
+conn.commit()
+
 # ユーザーの名前を取得する関数
 def get_user_name(user_id):
     try:
@@ -46,12 +56,6 @@ def get_user_name(user_id):
     except LineBotApiError as e:
         logger.error(f"LineBotApiError: {e}")
         return "user"
-
-# グローバル変数にユーザー名を格納
-user_names = {}
-
-# ユーザーごとのトーク履歴を記憶
-user_history = {}
 
 app = Flask(__name__)
 
@@ -76,23 +80,18 @@ def handle_message(event):
     user_id = event.source.user_id
     
     # ユーザー名がまだ取得されていない場合は、取得する
-    if user_id not in user_names:
-        user_names[user_id] = get_user_name(user_id)
-    user_name = user_names[user_id]
+    user_name = get_user_name(user_id)
     
-    # ユーザーの履歴を取得
-    history = user_history.setdefault(user_id, deque(maxlen=5))
+    # トーク履歴をデータベースに保存
+    c.execute("INSERT INTO chat_history VALUES (?, ?, ?)", (user_id, user_message, str(event.timestamp)))
+    conn.commit()
     
-    # トーク履歴に追加する
-    history.append(user_message)
+    # 過去のトーク履歴を取得
+    c.execute("SELECT message FROM chat_history WHERE user_id=? ORDER BY timestamp DESC LIMIT 5", (user_id,))
+    history = c.fetchall()
     
-    # トーク履歴を代入
-    history_length = len(history)
-    if history_length >= 5:
-        str1, str2, str3, str4, str5 = [str(history[i]) for i in range(history_length - 5, history_length)]
-    else:
-        str_list = [str(history[i]) for i in range(history_length)] + [""] * (5 - history_length)
-        str1, str2, str3, str4, str5 = str_list[0], str_list[1], str_list[2], str_list[3], str_list[4]
+    # 過去のトーク履歴から文字列を生成
+    history_str = ", ".join([h[0] for h in history])
     
     # 返答を生成
     try:
@@ -105,8 +104,7 @@ def handle_message(event):
                 
                 {"role": "system", "content": "You are talking with {}.".format(user_name)},
                 
-                {"role": "system", "content": "Chat history is {}, {}, {}, {}, {}.".format(str1, str2, str3, str4, str5)},
-                {"role": "system", "content": "Read the chat history from str1 to str5 and reply to the user with a response in the context of the conversation."},
+                {"role": "system", "content": "Chat history is {}.".format(history_str)},
                 
                 {"role": "user", "content": user_message},
             ],
