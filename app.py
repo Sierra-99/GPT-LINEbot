@@ -82,7 +82,7 @@ def handle_message(event):
     # ユーザー名がまだ取得されていない場合は、取得する
     user_name = get_user_name(user_id)
     
-    # トーク履歴をデータベースに保存
+    # ユーザーのメッセージをデータベースに保存
     c.execute("INSERT INTO chat_history VALUES (?, ?, ?)", (user_id, user_message, str(event.timestamp)))
     conn.commit()
     
@@ -95,25 +95,34 @@ def handle_message(event):
     
     # 返答を生成
     try:
+        # ユーザーのメッセージを一時的な変数に保存
+        messages = [
+            {"role": "system", "content": "Your name is <AI's NAME>."},
+                
+            {"role": "system", "content": "You are the <AI's ROLE>."},
+            
+            {"role": "system", "content": "You are talking with {}.".format(user_name)},
+            
+            {"role": "system", "content": "Chat history is {}.".format(history_str)},
+            
+            {"role": "user", "content": user_message},
+        ]
+        
+        # OpenAIの返答を生成
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "Your name is <AI's NAME>."},
-                
-                {"role": "system", "content": "You are the <AI's ROLE>."},
-                
-                {"role": "system", "content": "You are talking with {}.".format(user_name)},
-                
-                {"role": "system", "content": "Chat history is {}.".format(history_str)},
-                
-                {"role": "user", "content": user_message},
-            ],
+            messages=messages,
             temperature=0.7,
         )
+        
+        # OpenAIの返答をデータベースに保存
+        c.execute("INSERT INTO chat_history VALUES (?, ?, ?)", (user_id, response.choices[0]["message"]["content"].strip(), str(event.timestamp)))
+        conn.commit()
+        
         bot_response = response.choices[0]["message"]["content"].strip()
     except Exception as e:
         logger.error(f"Error: {e}")
-        bot_response = "Oops, something went wrong. Please try again later."
+        bot_response = "申し訳ありません、応答に失敗しました。再度お試しいただければ応答が可能かと思います。"
     
     # LINEに応答を返信
     try:
